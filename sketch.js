@@ -19,14 +19,10 @@ let invertY = false;
 
 // Variables para el sonido
 let oscillator;
-let maxVolume = 1.0; // Volumen máximo aumentado
+let volumeSlider;
+let maxVolume = 0.7; // Volumen máximo para evitar distorsión
 let currentVolume = 0;
-let volumeSmoothing = 0.92; // Menos suavizado para respuesta más inmediata
-
-// Rangos de frecuencia más apropiados para groan-tube
-const MIN_FREQ = 200;   // Frecuencia mínima más audible
-const MAX_FREQ = 1200;  // Frecuencia máxima aumentada
-const BASE_FREQ = 600; // Frecuencia base más alta
+let volumeSmoothing = 0.95; // Suavizado del volumen para evitar cambios bruscos
 
 const invertXCheckbox = document.getElementById("invertX");
 const invertYCheckbox = document.getElementById("invertY");
@@ -88,21 +84,19 @@ function setup() {
 }
 
 function setupSound() {
-  // Crear un oscilador usando la clase correcta de p5.sound
-  // 'sine' para sonido puro de groan-tube
-  oscillator = new p5.Oscillator();
-  oscillator.setType('sine');
+  // Crear un oscilador con una frecuencia baja para simular un groan tube
+  oscillator = new p5.Oscillator('sawtooth');
   
-  // Frecuencia inicial en el centro
-  oscillator.freq(BASE_FREQ);
+  // Frecuencia base muy baja para el efecto "groan"
+  oscillator.freq(60);
   
-  // Configurar el volumen - empezar con volumen bajo pero audible
-  oscillator.amp(0.1);
+  // Configurar el volumen inicial en 0
+  oscillator.amp(0);
   
   // Iniciar el oscilador
   oscillator.start();
   
-  console.log("Oscilador p5.sound iniciado - Groan Tube activado");
+  console.log("Oscilador iniciado - Groan Tube activado");
 }
 
 function draw() {
@@ -142,7 +136,7 @@ function draw() {
     vy *= -0.8;
   }
 
-  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN VERTICAL Y HORIZONTAL
+  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN VERTICAL
   updateSound();
 
   // Draw ball
@@ -150,13 +144,6 @@ function draw() {
   fill(255, 0, 0);
   ellipse(xpos, ypos, r * 2, r * 2);
 
-  // Draw center line for frequency reference
-  stroke(100);
-  line(width/2, 0, width/2, height);
-  
-  // Visual feedback for sound
-  drawSoundFeedback();
-  
   // Debug text
   fill(255);
   noStroke();
@@ -169,84 +156,32 @@ function draw() {
   text("invertX: " + invertX, 25, 135);
   text("invertY: " + invertY, 25, 150);
   text("Volumen: " + nf(currentVolume, 1, 2), 25, 175);
-  text("Frecuencia: " + nf(oscillator ? oscillator.getFreq() : 0, 1, 0) + " Hz", 25, 200);
-  
-  // Frequency guide text
-  fill(150);
-  text("← Grave", 10, height - 20);
-  text("Agudo →", width - 80, height - 20);
-}
-
-function drawSoundFeedback() {
-  // Visual feedback del sonido
-  let freq = oscillator ? oscillator.getFreq() : BASE_FREQ;
-  let vol = currentVolume;
-  
-  // Dibujar onda de sonido
-  stroke(0, 255, 0);
-  strokeWeight(2);
-  noFill();
-  beginShape();
-  for (let x = 0; x < width; x += 5) {
-    let angle = map(x, 0, width, 0, TWO_PI * 4);
-    let y = height - 50 + sin(angle * freq / 100) * vol * 30;
-    vertex(x, y);
-  }
-  endShape();
-  
-  // Dibujar medidor de volumen
-  fill(255, 0, 0, 100);
-  noStroke();
-  rect(width - 30, height - 100, 20, -vol * 80);
 }
 
 function updateSound() {
-  // CONTROL DE VOLUMEN BASADO EN POSICIÓN VERTICAL
+  // Calcular el volumen basado en la posición Y de la bola
   // Cuando la bola está arriba (ypos baja), volumen alto
   // Cuando la bola está abajo (ypos alta), volumen bajo
   
   // Normalizar la posición Y entre 0 y 1 (invertido porque Y=0 es arriba)
   let normalizedY = 1 - (ypos / height);
   
-  // Curva más pronunciada para cambios de volumen más dramáticos
-  let targetVolume = pow(normalizedY, 2) * maxVolume;
+  // Aplicar una curva no lineal para hacer la transición más interesante
+  let targetVolume = pow(normalizedY, 1.5) * maxVolume;
   
-  // Mínimo volumen para que siempre se escuche algo
-  targetVolume = max(targetVolume, 0.1);
-  
-  // Suavizar el cambio de volumen
+  // Suavizar el cambio de volumen para evitar clicks
   currentVolume = currentVolume * volumeSmoothing + targetVolume * (1 - volumeSmoothing);
   
-  // CONTROL DE FRECUENCIA BASADO EN POSICIÓN HORIZONTAL
-  // Cuando la bola está a la izquierda, frecuencia baja (grave)
-  // Cuando la bola está a la derecha, frecuencia alta (agudo)
-  
-  // Normalizar la posición X entre -1 y 1 (centro en 0)
-  let normalizedX = (xpos / width) * 2 - 1;
-  
-  // Escala más lineal para mejor control
-  let freqModifier = normalizedX;
-  
-  // Calcular frecuencia target - usar escala más musical
-  let targetFreq;
-  if (freqModifier >= 0) {
-    // Derecha - agudo
-    targetFreq = BASE_FREQ + (MAX_FREQ - BASE_FREQ) * pow(freqModifier, 1.5);
-  } else {
-    // Izquierda - grave
-    targetFreq = BASE_FREQ + (MIN_FREQ - BASE_FREQ) * pow(-freqModifier, 1.2);
+  // Aplicar el volumen al oscilador
+  if (oscillator) {
+    oscillator.amp(currentVolume, 0.1); // 0.1 segundos de fade para suavizar
   }
   
-  // Asegurar que la frecuencia esté en rango audible
-  targetFreq = constrain(targetFreq, MIN_FREQ, MAX_FREQ);
-  
-  // Aplicar el volumen y frecuencia al oscilador
+  // También modificar ligeramente la frecuencia basado en la posición vertical
+  // para hacer el sonido más dinámico
+  let targetFreq = 60 + (normalizedY * 40); // Rango de 60-100 Hz
   if (oscillator) {
-    // Volumen con menos suavizado para respuesta más inmediata
-    oscillator.amp(currentVolume, 0.05);
-    
-    // Frecuencia con cambio inmediato para efecto groan-tube más auténtico
-    oscillator.freq(targetFreq, 0.1);
+    oscillator.freq(targetFreq, 0.2);
   }
 }
 
@@ -301,31 +236,11 @@ function keyPressed() {
     invertX = !invertX;
     invertY = !invertY;
   }
-  // Tecla espacio para prueba de sonido
-  if (key === ' ') {
-    if (oscillator) {
-      // Test rápido de frecuencia
-      oscillator.freq(900, 0);
-      oscillator.amp(0.8, 0.1);
-      setTimeout(() => {
-        oscillator.amp(currentVolume, 0.2);
-        oscillator.freq(BASE_FREQ, 0.2);
-      }, 300);
-    }
-  }
 }
 
 // Función para detener el sonido cuando sea necesario
 function stopSound() {
   if (oscillator) {
     oscillator.stop();
-  }
-}
-
-// Asegurarse de que el audio se inicie después de la interacción del usuario
-function mousePressed() {
-  // Reanudar contexto de audio si es necesario
-  if (getAudioContext().state !== 'running') {
-    getAudioContext().resume();
   }
 }
