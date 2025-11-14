@@ -88,19 +88,21 @@ function setup() {
 }
 
 function setupSound() {
-  // Crear un oscilador - usar sine para sonido más puro como groan-tube
-  oscillator = new p5.Oscillator('sine');
+  // Crear un oscilador usando la clase correcta de p5.sound
+  // 'sine' para sonido puro de groan-tube
+  oscillator = new p5.Oscillator();
+  oscillator.setType('sine');
   
   // Frecuencia inicial en el centro
   oscillator.freq(BASE_FREQ);
   
-  // Configurar el volumen - empezar con volumen muy bajo pero audible
+  // Configurar el volumen - empezar con volumen bajo pero audible
   oscillator.amp(0.1);
   
   // Iniciar el oscilador
   oscillator.start();
   
-  console.log("Oscilador iniciado - Groan Tube mejorado activado");
+  console.log("Oscilador p5.sound iniciado - Groan Tube activado");
 }
 
 function draw() {
@@ -303,12 +305,12 @@ function keyPressed() {
   if (key === ' ') {
     if (oscillator) {
       // Test rápido de frecuencia
-      oscillator.freq(300, 0);
-      oscillator.amp(0.5, 0.1);
+      oscillator.freq(900, 0);
+      oscillator.amp(0.8, 0.1);
       setTimeout(() => {
         oscillator.amp(currentVolume, 0.2);
         oscillator.freq(BASE_FREQ, 0.2);
-      }, 500);
+      }, 300);
     }
   }
 }
@@ -317,5 +319,13 @@ function keyPressed() {
 function stopSound() {
   if (oscillator) {
     oscillator.stop();
+  }
+}
+
+// Asegurarse de que el audio se inicie después de la interacción del usuario
+function mousePressed() {
+  // Reanudar contexto de audio si es necesario
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
   }
 }
