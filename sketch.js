@@ -19,10 +19,15 @@ let invertY = false;
 
 // Variables para el sonido
 let oscillator;
-let volumeSlider;
 let maxVolume = 0.7; // Volumen máximo para evitar distorsión
 let currentVolume = 0;
 let volumeSmoothing = 0.95; // Suavizado del volumen para evitar cambios bruscos
+let freqSmoothing = 0.9; // Suavizado de la frecuencia
+
+// Rangos de frecuencia - izquierda (grave) a derecha (agudo)
+const MIN_FREQ = 40;   // Frecuencia mínima (más grave)
+const MAX_FREQ = 400;  // Frecuencia máxima (más agudo)
+const BASE_FREQ = 80;  // Frecuencia base cuando está en el centro
 
 const invertXCheckbox = document.getElementById("invertX");
 const invertYCheckbox = document.getElementById("invertY");
@@ -84,11 +89,11 @@ function setup() {
 }
 
 function setupSound() {
-  // Crear un oscilador con una frecuencia baja para simular un groan tube
+  // Crear un oscilador con forma de onda sawtooth para sonidos ricos en armónicos
   oscillator = new p5.Oscillator('sawtooth');
   
-  // Frecuencia base muy baja para el efecto "groan"
-  oscillator.freq(60);
+  // Frecuencia inicial en el centro
+  oscillator.freq(BASE_FREQ);
   
   // Configurar el volumen inicial en 0
   oscillator.amp(0);
@@ -96,7 +101,7 @@ function setupSound() {
   // Iniciar el oscilador
   oscillator.start();
   
-  console.log("Oscilador iniciado - Groan Tube activado");
+  console.log("Oscilador iniciado - Groan Tube bidimensional activado");
 }
 
 function draw() {
@@ -136,7 +141,7 @@ function draw() {
     vy *= -0.8;
   }
 
-  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN VERTICAL
+  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN VERTICAL Y HORIZONTAL
   updateSound();
 
   // Draw ball
@@ -144,6 +149,10 @@ function draw() {
   fill(255, 0, 0);
   ellipse(xpos, ypos, r * 2, r * 2);
 
+  // Draw center line for frequency reference
+  stroke(100);
+  line(width/2, 0, width/2, height);
+  
   // Debug text
   fill(255);
   noStroke();
@@ -156,10 +165,16 @@ function draw() {
   text("invertX: " + invertX, 25, 135);
   text("invertY: " + invertY, 25, 150);
   text("Volumen: " + nf(currentVolume, 1, 2), 25, 175);
+  text("Frecuencia: " + nf(oscillator? oscillator.getFreq() : 0, 1, 0) + " Hz", 25, 200);
+  
+  // Frequency guide text
+  fill(150);
+  text("← Grave", 10, height - 20);
+  text("Agudo →", width - 80, height - 20);
 }
 
 function updateSound() {
-  // Calcular el volumen basado en la posición Y de la bola
+  // CONTROL DE VOLUMEN BASADO EN POSICIÓN VERTICAL
   // Cuando la bola está arriba (ypos baja), volumen alto
   // Cuando la bola está abajo (ypos alta), volumen bajo
   
@@ -172,16 +187,34 @@ function updateSound() {
   // Suavizar el cambio de volumen para evitar clicks
   currentVolume = currentVolume * volumeSmoothing + targetVolume * (1 - volumeSmoothing);
   
+  // CONTROL DE FRECUENCIA BASADO EN POSICIÓN HORIZONTAL
+  // Cuando la bola está a la izquierda, frecuencia baja (grave)
+  // Cuando la bola está a la derecha, frecuencia alta (agudo)
+  
+  // Normalizar la posición X entre -1 y 1 (centro en 0)
+  let normalizedX = (xpos / width) * 2 - 1;
+  
+  // Aplicar curva exponencial para respuesta más musical
+  let freqModifier = pow(abs(normalizedX), 1.2) * (normalizedX > 0 ? 1 : -1);
+  
+  // Calcular frecuencia target - escala logarítmica para mejor respuesta auditiva
+  let targetFreq;
+  if (freqModifier >= 0) {
+    // Derecha - agudo (escala exponencial)
+    targetFreq = BASE_FREQ + (MAX_FREQ - BASE_FREQ) * pow(freqModifier, 2);
+  } else {
+    // Izquierda - grave (escala logarítmica)
+    targetFreq = BASE_FREQ + (MIN_FREQ - BASE_FREQ) * pow(-freqModifier, 1.5);
+  }
+  
   // Aplicar el volumen al oscilador
   if (oscillator) {
     oscillator.amp(currentVolume, 0.1); // 0.1 segundos de fade para suavizar
-  }
-  
-  // También modificar ligeramente la frecuencia basado en la posición vertical
-  // para hacer el sonido más dinámico
-  let targetFreq = 60 + (normalizedY * 40); // Rango de 60-100 Hz
-  if (oscillator) {
-    oscillator.freq(targetFreq, 0.2);
+    
+    // Aplicar frecuencia con suavizado
+    let currentFreq = oscillator.getFreq() || BASE_FREQ;
+    let smoothedFreq = currentFreq * freqSmoothing + targetFreq * (1 - freqSmoothing);
+    oscillator.freq(smoothedFreq, 0.15);
   }
 }
 
