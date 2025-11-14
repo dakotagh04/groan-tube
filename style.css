@@ -1,8 +1,36 @@
-html, body {
+html {
   margin: 0;
   padding: 0;
 }
 
 canvas {
   display: block;
+}
+
+body {
+  background: #111;
+  color: white;
+  font-family: sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+#controls {
+  padding: 10px;
+}
+
+canvas {
+  border: 2px solid #444;
+  margin-top: 10px;
+}
+
+button,
+input[type="range"] {
+  margin: 6px;
+}
+
+label {
+  display: block;
+  margin-top: 4px;
 }

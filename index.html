@@ -1,18 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <title>Groan Tube Digital</title>
 
-    <title>Sketch</title>
+    <!-- Librerías P5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
-
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
+    <!-- Archivo CSS separado -->
+    <link rel="stylesheet" href="style.css" />
   </head>
 
   <body>
+    <div id="controls">
+      <button id="soundButton">Activar sonido</button>
+      <button id="permissionButton">Activar acelerómetro</button>
+
+      <br />
+
+      <label>Sensibilidad</label>
+      <input
+        type="range"
+        id="sensSlider"
+        min="0.5"
+        max="5"
+        step="0.1"
+        value="1.5"
+      />
+
+      <label>Brillo / filtro</label>
+      <input
+        type="range"
+        id="brightSlider"
+        min="200"
+        max="2000"
+        step="10"
+        value="800"
+      />
+
+      <br />
+      <label><input type="checkbox" id="invertX" /> Invertir X</label>
+      <label><input type="checkbox" id="invertY" /> Invertir Y</label>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
     <script src="sketch.js"></script>
   </body>
 </html>
