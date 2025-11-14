@@ -24,9 +24,9 @@ let currentVolume = 0;
 let volumeSmoothing = 0.92; // Menos suavizado para respuesta más inmediata
 
 // Rangos de frecuencia más apropiados para groan-tube
-const MIN_FREQ = 60;   // Frecuencia mínima más audible
-const MAX_FREQ = 600;  // Frecuencia máxima aumentada
-const BASE_FREQ = 120; // Frecuencia base más alta
+const MIN_FREQ = 200;   // Frecuencia mínima más audible
+const MAX_FREQ = 1200;  // Frecuencia máxima aumentada
+const BASE_FREQ = 600; // Frecuencia base más alta
 
 const invertXCheckbox = document.getElementById("invertX");
 const invertYCheckbox = document.getElementById("invertY");
