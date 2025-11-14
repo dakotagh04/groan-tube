@@ -1,6 +1,5 @@
 // Motion-controlled ball with proper device motion permission + physics integration
 // iOS 13+ requires an explicit user gesture to grant motion sensor access.
-// This sketch shows a small button to enable motion on supported devices.
 
 const CANVAS_SIZE_PERCENT = 0.8; // canvas size as percent of smaller screen dimension
 
@@ -12,7 +11,6 @@ let vx = 0,
 let xpos, ypos; // position
 let friction = 0.98; // simple damping to avoid runaway speeds
 let accelScale = 1.2; // scale factor to tune sensitivity
-let permissionBtn; // UI button for iOS permission
 
 let invertX = false;
 let invertY = false;
@@ -30,6 +28,8 @@ invertYCheckbox.addEventListener("change", () => {
 
 const permissionButton = document.getElementById("permissionButton");
 
+let osc; // p5.Oscillator
+
 permissionButton.addEventListener("click", async (e) => {
   e.preventDefault();
 
@@ -42,25 +42,30 @@ permissionButton.addEventListener("click", async (e) => {
       const response = await DeviceMotionEvent.requestPermission();
       if (response === "granted") {
         startMotion();
+        // start audio after user gesture
+        userStartAudio().then(() => {
+          if (!osc) setupOscillator();
+          osc.start();
+        });
       }
     } catch (error) {
       console.error("Error requesting motion permission:", error);
     }
   } else {
-    // Other platforms: start listening right away
     startMotion();
+    userStartAudio().then(() => {
+      if (!osc) setupOscillator();
+      osc.start();
+    });
   }
 });
 
 const canvas = document.getElementById("canvas");
 
-// --- OSCILLATOR SETUP ---
-let osc;
 function setupOscillator() {
   osc = new p5.Oscillator('sine'); // nota constante
   osc.freq(440); // La4
   osc.amp(0); // volumen inicial
-  osc.start();
 }
 
 function windowResized() {
@@ -80,8 +85,6 @@ function setup() {
 
   xpos = width / 2;
   ypos = height / 2;
-
-  setupOscillator();
 }
 
 function draw() {
@@ -90,7 +93,7 @@ function draw() {
   // Map device acceleration to screen coordinates considering screen rotation
   const { sx, sy } = mapMotionToScreen(ax || 0, ay || 0);
 
-  // Integrate acceleration into velocity; flip screen Y so tilting up moves ball up
+  // Integrate acceleration into velocity
   vx += sx * accelScale;
   vy += -sy * accelScale;
 
@@ -127,8 +130,12 @@ function draw() {
   ellipse(xpos, ypos, r * 2, r * 2);
 
   // --- CONTROL OSCILLATOR VOLUME ---
-  let vol = map(ypos, height, 0, 0, 1); // arriba = 1, abajo = 0
-  osc.amp(vol, 0.1); // suavizado de 0.1s
+  if (osc) {
+    // arriba = volumen máximo, abajo = volumen mínimo
+    let vol = map(ypos, height, 0, 0.05, 1);
+    vol = constrain(vol, 0, 1);
+    osc.amp(vol, 0.1); // suavizado
+  }
 
   // Debug text
   fill(255);
@@ -144,13 +151,11 @@ function draw() {
 }
 
 function startMotion() {
-  // Listen for motion events; prefer includingGravity for broader support
   window.addEventListener(
     "devicemotion",
     (e) => {
       const a = e.accelerationIncludingGravity || e.acceleration;
       if (!a) return;
-      // Use floats (parseInt would zero-out small values!)
       ax = typeof a.x === "number" ? a.x : 0;
       ay = typeof a.y === "number" ? a.y : 0;
       az = typeof a.z === "number" ? a.z : 0;
@@ -161,12 +166,11 @@ function startMotion() {
 
 // --- Helpers to normalize device axes to screen axes ---
 function getScreenAngle() {
-  // 0, 90, 180, 270 degrees depending on orientation
   if (screen.orientation && typeof screen.orientation.angle === "number") {
     return screen.orientation.angle;
   }
   if (typeof window.orientation === "number") {
-    return window.orientation; // legacy iOS/Android
+    return window.orientation;
   }
   return 0;
 }
@@ -179,7 +183,6 @@ function rotate2D(x, y, deg) {
 }
 
 function mapMotionToScreen(axDev, ayDev) {
-  // Rotate device vector into current screen orientation
   const ang = getScreenAngle();
   const r = rotate2D(axDev, ayDev, ang);
   let sx = r.x * (invertX ? -1 : 1);
