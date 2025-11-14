@@ -19,15 +19,14 @@ let invertY = false;
 
 // Variables para el sonido
 let oscillator;
-let maxVolume = 0.7; // Volumen máximo para evitar distorsión
+let maxVolume = 1.0; // Volumen máximo aumentado
 let currentVolume = 0;
-let volumeSmoothing = 0.95; // Suavizado del volumen para evitar cambios bruscos
-let freqSmoothing = 0.9; // Suavizado de la frecuencia
+let volumeSmoothing = 0.92; // Menos suavizado para respuesta más inmediata
 
-// Rangos de frecuencia - izquierda (grave) a derecha (agudo)
-const MIN_FREQ = 40;   // Frecuencia mínima (más grave)
-const MAX_FREQ = 400;  // Frecuencia máxima (más agudo)
-const BASE_FREQ = 80;  // Frecuencia base cuando está en el centro
+// Rangos de frecuencia más apropiados para groan-tube
+const MIN_FREQ = 60;   // Frecuencia mínima más audible
+const MAX_FREQ = 600;  // Frecuencia máxima aumentada
+const BASE_FREQ = 120; // Frecuencia base más alta
 
 const invertXCheckbox = document.getElementById("invertX");
 const invertYCheckbox = document.getElementById("invertY");
@@ -89,19 +88,19 @@ function setup() {
 }
 
 function setupSound() {
-  // Crear un oscilador con forma de onda sawtooth para sonidos ricos en armónicos
-  oscillator = new p5.Oscillator('sawtooth');
+  // Crear un oscilador - usar sine para sonido más puro como groan-tube
+  oscillator = new p5.Oscillator('sine');
   
   // Frecuencia inicial en el centro
   oscillator.freq(BASE_FREQ);
   
-  // Configurar el volumen inicial en 0
-  oscillator.amp(0);
+  // Configurar el volumen - empezar con volumen muy bajo pero audible
+  oscillator.amp(0.1);
   
   // Iniciar el oscilador
   oscillator.start();
   
-  console.log("Oscilador iniciado - Groan Tube bidimensional activado");
+  console.log("Oscilador iniciado - Groan Tube mejorado activado");
 }
 
 function draw() {
@@ -153,6 +152,9 @@ function draw() {
   stroke(100);
   line(width/2, 0, width/2, height);
   
+  // Visual feedback for sound
+  drawSoundFeedback();
+  
   // Debug text
   fill(255);
   noStroke();
@@ -165,12 +167,35 @@ function draw() {
   text("invertX: " + invertX, 25, 135);
   text("invertY: " + invertY, 25, 150);
   text("Volumen: " + nf(currentVolume, 1, 2), 25, 175);
-  text("Frecuencia: " + nf(oscillator? oscillator.getFreq() : 0, 1, 0) + " Hz", 25, 200);
+  text("Frecuencia: " + nf(oscillator ? oscillator.getFreq() : 0, 1, 0) + " Hz", 25, 200);
   
   // Frequency guide text
   fill(150);
   text("← Grave", 10, height - 20);
   text("Agudo →", width - 80, height - 20);
+}
+
+function drawSoundFeedback() {
+  // Visual feedback del sonido
+  let freq = oscillator ? oscillator.getFreq() : BASE_FREQ;
+  let vol = currentVolume;
+  
+  // Dibujar onda de sonido
+  stroke(0, 255, 0);
+  strokeWeight(2);
+  noFill();
+  beginShape();
+  for (let x = 0; x < width; x += 5) {
+    let angle = map(x, 0, width, 0, TWO_PI * 4);
+    let y = height - 50 + sin(angle * freq / 100) * vol * 30;
+    vertex(x, y);
+  }
+  endShape();
+  
+  // Dibujar medidor de volumen
+  fill(255, 0, 0, 100);
+  noStroke();
+  rect(width - 30, height - 100, 20, -vol * 80);
 }
 
 function updateSound() {
@@ -181,10 +206,13 @@ function updateSound() {
   // Normalizar la posición Y entre 0 y 1 (invertido porque Y=0 es arriba)
   let normalizedY = 1 - (ypos / height);
   
-  // Aplicar una curva no lineal para hacer la transición más interesante
-  let targetVolume = pow(normalizedY, 1.5) * maxVolume;
+  // Curva más pronunciada para cambios de volumen más dramáticos
+  let targetVolume = pow(normalizedY, 2) * maxVolume;
   
-  // Suavizar el cambio de volumen para evitar clicks
+  // Mínimo volumen para que siempre se escuche algo
+  targetVolume = max(targetVolume, 0.1);
+  
+  // Suavizar el cambio de volumen
   currentVolume = currentVolume * volumeSmoothing + targetVolume * (1 - volumeSmoothing);
   
   // CONTROL DE FRECUENCIA BASADO EN POSICIÓN HORIZONTAL
@@ -194,27 +222,29 @@ function updateSound() {
   // Normalizar la posición X entre -1 y 1 (centro en 0)
   let normalizedX = (xpos / width) * 2 - 1;
   
-  // Aplicar curva exponencial para respuesta más musical
-  let freqModifier = pow(abs(normalizedX), 1.2) * (normalizedX > 0 ? 1 : -1);
+  // Escala más lineal para mejor control
+  let freqModifier = normalizedX;
   
-  // Calcular frecuencia target - escala logarítmica para mejor respuesta auditiva
+  // Calcular frecuencia target - usar escala más musical
   let targetFreq;
   if (freqModifier >= 0) {
-    // Derecha - agudo (escala exponencial)
-    targetFreq = BASE_FREQ + (MAX_FREQ - BASE_FREQ) * pow(freqModifier, 2);
+    // Derecha - agudo
+    targetFreq = BASE_FREQ + (MAX_FREQ - BASE_FREQ) * pow(freqModifier, 1.5);
   } else {
-    // Izquierda - grave (escala logarítmica)
-    targetFreq = BASE_FREQ + (MIN_FREQ - BASE_FREQ) * pow(-freqModifier, 1.5);
+    // Izquierda - grave
+    targetFreq = BASE_FREQ + (MIN_FREQ - BASE_FREQ) * pow(-freqModifier, 1.2);
   }
   
-  // Aplicar el volumen al oscilador
+  // Asegurar que la frecuencia esté en rango audible
+  targetFreq = constrain(targetFreq, MIN_FREQ, MAX_FREQ);
+  
+  // Aplicar el volumen y frecuencia al oscilador
   if (oscillator) {
-    oscillator.amp(currentVolume, 0.1); // 0.1 segundos de fade para suavizar
+    // Volumen con menos suavizado para respuesta más inmediata
+    oscillator.amp(currentVolume, 0.05);
     
-    // Aplicar frecuencia con suavizado
-    let currentFreq = oscillator.getFreq() || BASE_FREQ;
-    let smoothedFreq = currentFreq * freqSmoothing + targetFreq * (1 - freqSmoothing);
-    oscillator.freq(smoothedFreq, 0.15);
+    // Frecuencia con cambio inmediato para efecto groan-tube más auténtico
+    oscillator.freq(targetFreq, 0.1);
   }
 }
 
@@ -268,6 +298,18 @@ function keyPressed() {
   if (key === "f" || key === "F") {
     invertX = !invertX;
     invertY = !invertY;
+  }
+  // Tecla espacio para prueba de sonido
+  if (key === ' ') {
+    if (oscillator) {
+      // Test rápido de frecuencia
+      oscillator.freq(300, 0);
+      oscillator.amp(0.5, 0.1);
+      setTimeout(() => {
+        oscillator.amp(currentVolume, 0.2);
+        oscillator.freq(BASE_FREQ, 0.2);
+      }, 500);
+    }
   }
 }
 
