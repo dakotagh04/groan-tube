@@ -136,7 +136,7 @@ function draw() {
     vy *= -0.8;
   }
 
-  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN VERTICAL
+  // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN
   updateSound();
 
   // Draw ball
@@ -159,7 +159,7 @@ function draw() {
 }
 
 function updateSound() {
-  // Calcular el volumen basado en la posición Y de la bola
+  // VOLUMEN: Controlado por la posición vertical (Y)
   // Cuando la bola está arriba (ypos baja), volumen alto
   // Cuando la bola está abajo (ypos alta), volumen bajo
   
@@ -172,16 +172,22 @@ function updateSound() {
   // Suavizar el cambio de volumen para evitar clicks
   currentVolume = currentVolume * volumeSmoothing + targetVolume * (1 - volumeSmoothing);
   
-  // Aplicar el volumen al oscilador
+  // FRECUENCIA: Controlada por la posición horizontal (X)
+  // Cuando la bola está a la izquierda (xpos baja), frecuencia baja
+  // Cuando la bola está a la derecha (xpos alta), frecuencia alta
+  
+  // Normalizar la posición X entre 0 y 1
+  let normalizedX = xpos / width;
+  
+  // Mapear la posición X a un rango de frecuencias (60Hz - 200Hz)
+  let minFreq = 60;   // Frecuencia mínima (izquierda - grave)
+  let maxFreq = 200;  // Frecuencia máxima (derecha - agudo)
+  let targetFreq = minFreq + (normalizedX * (maxFreq - minFreq));
+  
+  // Aplicar el volumen y frecuencia al oscilador
   if (oscillator) {
     oscillator.amp(currentVolume, 0.1); // 0.1 segundos de fade para suavizar
-  }
-  
-  // También modificar ligeramente la frecuencia basado en la posición vertical
-  // para hacer el sonido más dinámico
-  let targetFreq = 60 + (normalizedY * 40); // Rango de 60-100 Hz
-  if (oscillator) {
-    oscillator.freq(targetFreq, 0.2);
+    oscillator.freq(targetFreq, 0.2);   // 0.2 segundos de fade para cambios suaves de frecuencia
   }
 }
 
