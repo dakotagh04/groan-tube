@@ -10,8 +10,8 @@ let ax = 0,
 let vx = 0,
   vy = 0; // velocity we integrate from acceleration
 let xpos, ypos; // position
-let friction = 0.98; // simple damping to avoid runaway speeds
-let accelScale = 1.2; // scale factor to tune sensitivity
+let friction = 0.95; // Más fricción para movimiento más lento
+let accelScale = 0.5; // Escala de aceleración reducida para movimiento más suave
 let permissionBtn; // UI button for iOS permission
 
 let invertX = false;
@@ -117,23 +117,27 @@ function draw() {
   xpos += vx;
   ypos += vy;
 
-  // Collide with edges and bounce
+  // CONFINAR LA PELOTA DENTRO DE LOS LÍMITES SIN REBOTAR
   const r = 12.5; // radius of the ball
+  
+  // Limitar la posición en X sin rebote
   if (xpos > width - r) {
     xpos = width - r;
-    vx *= -0.8;
+    vx = 0; // Detener el movimiento en lugar de rebotar
   }
   if (xpos < r) {
     xpos = r;
-    vx *= -0.8;
+    vx = 0; // Detener el movimiento en lugar de rebotar
   }
+  
+  // Limitar la posición en Y sin rebote
   if (ypos > height - r) {
     ypos = height - r;
-    vy *= -0.8;
+    vy = 0; // Detener el movimiento en lugar de rebotar
   }
   if (ypos < r) {
     ypos = r;
-    vy *= -0.8;
+    vy = 0; // Detener el movimiento en lugar de rebotar
   }
 
   // ACTUALIZAR EL SONIDO BASADO EN LA POSICIÓN
